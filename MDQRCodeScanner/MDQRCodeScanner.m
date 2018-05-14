@@ -1,5 +1,5 @@
 //
-//  MDQRCodeScaner.m
+//  MDQRCodeScanner.m
 //  Exchange
 //
 //  Created by xulinfeng on 2018/4/23.
@@ -7,17 +7,19 @@
 //
 
 #import <ImageIO/ImageIO.h>
-#import "MDQRCodeScaner.h"
+#import "MDQRCodeScanner.h"
 
-@interface MDQRCodeScaner () <AVCaptureMetadataOutputObjectsDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface MDQRCodeScanner () <AVCaptureMetadataOutputObjectsDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property (nonatomic, strong) AVCaptureSession *session;
 @property (nonatomic, strong) AVCaptureVideoDataOutput *videoDataOutput;
+@property (nonatomic, strong) AVCaptureMetadataOutput *metadataOutput;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *videoPreviewLayer;
+@property (nonatomic, strong) AVCaptureDeviceInput *deviceInput;
 
 @end
 
-@implementation MDQRCodeScaner
+@implementation MDQRCodeScanner
 
 - (instancetype)initWithSessionPreset:(AVCaptureSessionPreset)sessionPreset metadataObjectTypes:(NSArray<AVMetadataObjectType> *)metadataObjectTypes; {
     NSCParameterAssert(sessionPreset);
@@ -33,11 +35,10 @@
 
 - (void)initialize{
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-    AVCaptureDeviceInput *deviceInput = [AVCaptureDeviceInput deviceInputWithDevice:device error:nil];
+    _deviceInput = [AVCaptureDeviceInput deviceInputWithDevice:device error:nil];
     
-    AVCaptureMetadataOutput *metadataOutput = [[AVCaptureMetadataOutput alloc] init];
-    metadataOutput.metadataObjectTypes = _metadataObjectTypes;
-    [metadataOutput setMetadataObjectsDelegate:self queue:dispatch_get_main_queue()];
+    _metadataOutput = [[AVCaptureMetadataOutput alloc] init];
+    [_metadataOutput setMetadataObjectsDelegate:self queue:dispatch_get_main_queue()];
     
     _videoDataOutput = [[AVCaptureVideoDataOutput alloc] init];
     [_videoDataOutput setSampleBufferDelegate:self queue:dispatch_get_main_queue()];
@@ -46,8 +47,16 @@
     _session.sessionPreset = _sessionPreset;
     
     [_session addOutput:_videoDataOutput];
-    [_session addOutput:metadataOutput];
-    [_session addInput:deviceInput];
+    [_session addOutput:_metadataOutput];
+#if !TARGET_OS_SIMULATOR
+    [_session addInput:_deviceInput];
+#endif
+    
+    NSSet<AVMetadataObjectType> *availableTypes = [NSSet setWithArray:[_metadataOutput availableMetadataObjectTypes]];
+    NSMutableSet<AVMetadataObjectType> *types = [NSMutableSet setWithArray:_metadataObjectTypes];
+    [types intersectSet:availableTypes];
+    
+    _metadataOutput.metadataObjectTypes = types.allObjects;
     
     _videoPreviewLayer = [AVCaptureVideoPreviewLayer layerWithSession:_session];
     _videoPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
@@ -62,8 +71,8 @@
 #pragma mark - AVCaptureMetadataOutputObjectsDelegate
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputMetadataObjects:(NSArray *)metadataObjects fromConnection:(AVCaptureConnection *)connection {
-    if (_delegate && [_delegate respondsToSelector:@selector(scaner:didOutputMetadataObjects:)]) {
-        [_delegate scaner:self didOutputMetadataObjects:metadataObjects];
+    if (_delegate && [_delegate respondsToSelector:@selector(scanner:didOutputMetadataObjects:)]) {
+        [_delegate scanner:self didOutputMetadataObjects:metadataObjects];
     }
 }
 
@@ -76,8 +85,8 @@
     NSDictionary *exifMetadata = [[metadata objectForKey:(NSString *)kCGImagePropertyExifDictionary] mutableCopy];
     float brightnessValue = [[exifMetadata objectForKey:(NSString *)kCGImagePropertyExifBrightnessValue] floatValue];
     
-    if (_delegate && [_delegate respondsToSelector:@selector(scaner:brightnessValue:)]) {
-        [_delegate scaner:self brightnessValue:brightnessValue];
+    if (_delegate && [_delegate respondsToSelector:@selector(scanner:brightnessValue:)]) {
+        [_delegate scanner:self brightnessValue:brightnessValue];
     }
 }
 
@@ -106,6 +115,39 @@
 - (void)stop {
     [_session stopRunning];
     [_videoPreviewLayer removeFromSuperlayer];
+}
+
++ (NSString *)stringValueFromQRCodeImage:(UIImage *)QRCodeImage;{
+    CIImage *image = [CIImage imageWithCGImage:QRCodeImage.CGImage];
+    
+    CIContext *context = [CIContext contextWithOptions:nil];
+    CIDetector *detector = [CIDetector detectorOfType:CIDetectorTypeQRCode context:context options:@{CIDetectorAccuracy: CIDetectorAccuracyHigh}];
+    CIQRCodeFeature *feature = (id)[[detector featuresInImage:image] firstObject];
+    
+    return feature.messageString;
+}
+
++ (UIImage *)QRCodeImageFromString:(NSString *)string;{
+    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+    
+    CIFilter *dataFilter = [CIFilter filterWithName:@"CIQRCodeGenerator" keysAndValues:@"inputMessage", data, @"inputCorrectionLevel", @"M", nil];
+    CIFilter *colorFilter = [CIFilter filterWithName:@"CIFalseColor" keysAndValues:@"inputImage", dataFilter.outputImage, @"inputColor0", [CIColor colorWithCGColor:UIColor.redColor.CGColor], @"inputColor1", [CIColor colorWithCGColor:UIColor.blueColor.CGColor], nil];
+    
+    CIImage *image = colorFilter.outputImage;
+    CGImageRef imageRef = [[CIContext contextWithOptions:nil] createCGImage:image fromRect:image.extent];
+    
+    UIGraphicsBeginImageContext(CGSizeMake(300, 300));
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextSetInterpolationQuality(context, kCGInterpolationNone);
+    CGContextScaleCTM(context, 1.0, -1.0);
+    CGContextDrawImage(context, CGContextGetClipBoundingBox(context), imageRef);
+    
+    UIImage *codeImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    CGImageRelease(imageRef);
+    
+    return codeImage;
 }
 
 @end

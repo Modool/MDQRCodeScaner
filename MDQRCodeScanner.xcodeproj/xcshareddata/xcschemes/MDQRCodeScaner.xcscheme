@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "08F2960B20A57347000A1B70"
-               BuildableName = "MDQRCodeScaner.framework"
-               BlueprintName = "MDQRCodeScaner"
-               ReferencedContainer = "container:MDQRCodeScaner.xcodeproj">
+               BuildableName = "MDQRCodeScanner.framework"
+               BlueprintName = "MDQRCodeScanner"
+               ReferencedContainer = "container:MDQRCodeScanner.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -46,9 +46,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "08F2960B20A57347000A1B70"
-            BuildableName = "MDQRCodeScaner.framework"
-            BlueprintName = "MDQRCodeScaner"
-            ReferencedContainer = "container:MDQRCodeScaner.xcodeproj">
+            BuildableName = "MDQRCodeScanner.framework"
+            BlueprintName = "MDQRCodeScanner"
+            ReferencedContainer = "container:MDQRCodeScanner.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -64,9 +64,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "08F2960B20A57347000A1B70"
-            BuildableName = "MDQRCodeScaner.framework"
-            BlueprintName = "MDQRCodeScaner"
-            ReferencedContainer = "container:MDQRCodeScaner.xcodeproj">
+            BuildableName = "MDQRCodeScanner.framework"
+            BlueprintName = "MDQRCodeScanner"
+            ReferencedContainer = "container:MDQRCodeScanner.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
    </ProfileAction>
